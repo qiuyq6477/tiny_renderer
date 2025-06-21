@@ -44,6 +44,7 @@ add_executable(${PROJECT_NAME}
     vector.c
     raytracer.c
     matrix.c
+    raster.c
 )
 
 # 链接SDL2库

@@ -5,6 +5,7 @@
 #include "display.h"
 #include "raytracer.h"
 #include "matrix.h"
+#include "raster.h"
 
 bool is_running = false;
 
@@ -44,10 +45,8 @@ void update(void) {
     // Raytracing不需要更新逻辑
 }
 
-void render(void) {
-    // 清空颜色缓冲区
-    clear_color_buffer(0xFF000000);
-    
+void raytracer_test()
+{
     // 对每个像素进行光线追踪
     for (int x = -window_width/2; x < window_width/2; x++) {
         for (int y = -window_height/2; y < window_height/2; y++) {
@@ -59,13 +58,26 @@ void render(void) {
             
             // 绘制像素
             draw_pixel(
-                window_width/2 + x,
-                window_height/2 - y,
+                x,
+                y,
                 color
             );
         }
     }
+}
+
+void raster_test()
+{
+    draw_line((vec2_t){-200, -100}, (vec2_t){240, 120}, 0xFFFFFFFF);
+    draw_line((vec2_t){-50, -200}, (vec2_t){60, 240}, 0xFFFFFFFF);
+}
+
+void render(void) {
+    // 清空颜色缓冲区
+    clear_color_buffer(0xFF000000);
     
+    // raytracer_test();
+    raster_test();
     // 渲染颜色缓冲区
     render_color_buffer();
     SDL_RenderPresent(renderer);
