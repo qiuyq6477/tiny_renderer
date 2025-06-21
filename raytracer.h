@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "vector.h"
+#include "matrix.h"
 
 // 球体结构体
 typedef struct {
@@ -50,6 +51,7 @@ typedef struct {
 extern sphere_t spheres[NUM_SPHERES];
 extern light_t lights[NUM_LIGHTS];
 extern vec3_t camera_position;
+extern matrix_t camera_rotation;
 
 // 向量运算函数
 float dot_product(vec3_t v1, vec3_t v2);

@@ -15,7 +15,8 @@
 // 全局变量定义
 sphere_t spheres[NUM_SPHERES];
 light_t lights[NUM_LIGHTS];
-vec3_t camera_position = {0, 0, 0};
+vec3_t camera_position = {3, 0, 1};
+matrix_t camera_rotation;
 
 // 向量点积
 float dot_product(vec3_t v1, vec3_t v2) {
@@ -225,6 +226,13 @@ uint32_t trace_ray(vec3_t origin, vec3_t direction, float min_t, float max_t, in
 
 // 初始化场景
 void init_scene(void) {
+    // 使用给定的二维数组初始化相机旋转矩阵
+    float cam_rot_arr[3][3] = {
+        {0.7071f, 0.0f, -0.7071f},
+        {0.0f,    1.0f,  0.0f   },
+        {0.7071f, 0.0f,  0.7071f}
+    };
+    camera_rotation = matrix_from_2darray(3, 3, cam_rot_arr);
     // 初始化球体
     spheres[0] = (sphere_t){{0, -1, 3}, 1, 0xFFFF0000, 500, 0.2};  // 红色球体
     spheres[1] = (sphere_t){{-2, 0, 4}, 1, 0xFF00FF00, 10, 0.4};  // 绿色球体

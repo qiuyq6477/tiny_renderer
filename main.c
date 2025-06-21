@@ -4,6 +4,7 @@
 #include <SDL2/SDL.h>
 #include "display.h"
 #include "raytracer.h"
+#include "matrix.h"
 
 bool is_running = false;
 
@@ -52,7 +53,8 @@ void render(void) {
         for (int y = -window_height/2; y < window_height/2; y++) {
             vec3_t direction = canvas_to_viewport(x, y);
             direction = normalize(direction);
-            
+            direction = matrix_mul_vec3(&camera_rotation, direction);
+
             uint32_t color = trace_ray(camera_position, direction, 1, INFINITY, 3);
             
             // 绘制像素
