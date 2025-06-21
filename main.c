@@ -3,24 +3,15 @@
 #include <stdbool.h>
 #include <SDL2/SDL.h>
 #include "display.h"
-#include "vector.h"
-
-////////////////////////////////////////////////////////////////////////////////
-// Declare an array of vectors/points
-////////////////////////////////////////////////////////////////////////////////
-#define N_POINTS (9 * 9 * 9)
-vec3_t cube_points[N_POINTS]; // 9x9x9 cube
-vec2_t projected_points[N_POINTS];
-
-float fov_factor = 640;
+#include "raytracer.h"
 
 bool is_running = false;
 
 void setup(void) {
-    // Allocate the required memory in bytes to hold the color buffer
+    // 分配颜色缓冲区内存
     color_buffer = (uint32_t*) malloc(sizeof(uint32_t) * window_width * window_height);
 
-    // Creating a SDL texture that is used to display the color buffer
+    // 创建SDL纹理用于显示颜色缓冲区
     color_buffer_texture = SDL_CreateTexture(
         renderer,
         SDL_PIXELFORMAT_ARGB8888,
@@ -29,78 +20,52 @@ void setup(void) {
         window_height
     );
 
-    int point_count = 0;
-
-    // Start loading my array of vectors
-    // From -1 to 1 (in this 9x9x9 cube)
-    for (float x = -1; x <= 1; x += 0.25) {
-        for (float y = -1; y <= 1; y += 0.25) {
-            for (float z = -1; z <= 1; z += 0.25) {
-                vec3_t new_point = { .x = x, .y = y, .z = z };
-                cube_points[point_count++] = new_point;
-            }
-        }
-    }
+    // 初始化场景
+    init_scene();
 }
 
 void process_input(void) {
     SDL_Event event;
-    SDL_PollEvent(&event);
-
-    switch (event.type) {
-        case SDL_QUIT:
-            is_running = false;
-            break;
-        case SDL_KEYDOWN:
-            if (event.key.keysym.sym == SDLK_ESCAPE)
+    while (SDL_PollEvent(&event)) {
+        switch (event.type) {
+            case SDL_QUIT:
                 is_running = false;
-            break;
+                break;
+            case SDL_KEYDOWN:
+                if (event.key.keysym.sym == SDLK_ESCAPE)
+                    is_running = false;
+                break;
+        }
     }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// Function that receives a 3D vector and returns a projected 2D point
-////////////////////////////////////////////////////////////////////////////////
-vec2_t project(vec3_t point) {
-    vec2_t projected_point = {
-        .x = (fov_factor * point.x) / point.z,
-        .y = (fov_factor * point.y) / point.z
-    };
-    return projected_point;
 }
 
 void update(void) {
-    for (int i = 0; i < N_POINTS; i++) {
-        vec3_t point = cube_points[i];
-
-        point.z -= 5;
-        // Project the current point
-        vec2_t projected_point = project(point);
-
-        // Save the projected 2D vector in the array of projected points
-        projected_points[i] = projected_point;
-    }
+    // Raytracing不需要更新逻辑
 }
 
 void render(void) {
-    draw_grid();
-
-    // Loop all projected points and render them
-    for (int i = 0; i < N_POINTS; i++) {
-        vec2_t projected_point = projected_points[i];
-        draw_rect(
-            projected_point.x + (window_width / 2),
-            projected_point.y + (window_height / 2),
-            4,
-            4,
-            0xFFFFFF00
-        );
-    }
-
-    render_color_buffer();
-
+    // 清空颜色缓冲区
     clear_color_buffer(0xFF000000);
-
+    
+    // 对每个像素进行光线追踪
+    for (int x = -window_width/2; x < window_width/2; x++) {
+        for (int y = -window_height/2; y < window_height/2; y++) {
+            vec3_t direction = canvas_to_viewport(x, y);
+            direction = normalize(direction);
+            
+            uint32_t color = trace_ray(camera_position, direction, 1, INFINITY);
+            
+            // 绘制像素
+            draw_pixel(
+                window_width/2 + x,
+                window_height/2 - y,
+                color
+            );
+        }
+    }
+    
+    // 渲染颜色缓冲区
+    render_color_buffer();
     SDL_RenderPresent(renderer);
 }
 
@@ -113,6 +78,9 @@ int main(void) {
         process_input();
         update();
         render();
+        
+        // 添加小延迟以控制帧率
+        SDL_Delay(16); // 约60 FPS
     }
 
     destroy_window();

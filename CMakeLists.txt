@@ -42,6 +42,7 @@ add_executable(${PROJECT_NAME}
     display.c
     main.c
     vector.c
+    raytracer.c
 )
 
 # 链接SDL2库
