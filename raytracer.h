@@ -10,6 +10,7 @@ typedef struct {
     vec3_t center;
     float radius;
     uint32_t color;
+    float specular;
 } sphere_t;
 
 // 相交结果结构体
@@ -17,14 +18,31 @@ typedef struct {
     float t1, t2;
 } intersection_result_t;
 
+// 光源类型
+enum light_type {
+    LIGHT_AMBIENT,
+    LIGHT_POINT,
+    LIGHT_DIRECTIONAL
+};
+
+// 光源结构体
+typedef struct {
+    enum light_type ltype;
+    float intensity;
+    vec3_t position;
+} light_t;
+
+
 // 场景参数
 #define VIEWPORT_SIZE 1.0f
 #define PROJECTION_PLANE_Z 1.0f
 #define BACKGROUND_COLOR 0xFFFFFFFF
-#define NUM_SPHERES 3
+#define NUM_SPHERES 4
+#define NUM_LIGHTS 3
 
 // 全局变量声明
 extern sphere_t spheres[NUM_SPHERES];
+extern light_t lights[NUM_LIGHTS];
 extern vec3_t camera_position;
 
 // 向量运算函数
