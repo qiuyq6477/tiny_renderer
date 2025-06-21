@@ -11,12 +11,18 @@ typedef struct {
     float radius;
     uint32_t color;
     float specular;
+    float reflective;
 } sphere_t;
 
 // 相交结果结构体
 typedef struct {
     float t1, t2;
 } intersection_result_t;
+
+typedef struct {
+    sphere_t *sphere;
+    float t;
+} closest_intersection_result_t;
 
 // 光源类型
 enum light_type {
@@ -36,7 +42,7 @@ typedef struct {
 // 场景参数
 #define VIEWPORT_SIZE 1.0f
 #define PROJECTION_PLANE_Z 1.0f
-#define BACKGROUND_COLOR 0xFFFFFFFF
+#define BACKGROUND_COLOR 0x00000000
 #define NUM_SPHERES 4
 #define NUM_LIGHTS 3
 
@@ -55,7 +61,7 @@ vec3_t canvas_to_viewport(int x, int y);
 
 // 光线追踪函数
 intersection_result_t intersect_ray_sphere(vec3_t origin, vec3_t direction, sphere_t sphere);
-uint32_t trace_ray(vec3_t origin, vec3_t direction, float min_t, float max_t);
+uint32_t trace_ray(vec3_t origin, vec3_t direction, float min_t, float max_t, int depth);
 
 // 场景初始化函数
 void init_scene(void);

@@ -53,7 +53,7 @@ void render(void) {
             vec3_t direction = canvas_to_viewport(x, y);
             direction = normalize(direction);
             
-            uint32_t color = trace_ray(camera_position, direction, 1, INFINITY);
+            uint32_t color = trace_ray(camera_position, direction, 1, INFINITY, 3);
             
             // 绘制像素
             draw_pixel(
