@@ -68,8 +68,15 @@ void raytracer_test()
 
 void raster_test()
 {
-    draw_line((vec2_t){-200, -100}, (vec2_t){240, 120}, 0xFFFFFFFF);
-    draw_line((vec2_t){-50, -200}, (vec2_t){60, 240}, 0xFFFFFFFF);
+    // draw_line((vec2_t){-200, -100}, (vec2_t){240, 120}, 0xFFFFFFFF);
+    // draw_line((vec2_t){-50, -200}, (vec2_t){60, 240}, 0xFFFFFFFF);
+
+    vec2_t p0 = (vec2_t){-200, -250};
+    vec2_t p1 = (vec2_t){200, 50};
+    vec2_t p2 = (vec2_t){20, 250};
+
+    draw_wireframe_triangle(p0, p1, p2, 0xFF000000);
+    draw_filled_triangle(p0, p1, p2, 0xFFFF0000);
 }
 
 void render(void) {
