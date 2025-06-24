@@ -200,3 +200,19 @@ void draw_shaded_triangle(
         }
     }
 }
+
+// 实现视口到画布的坐标变换
+vec2_t view_port_to_canvas(vec2_t p, int canvas_width, int canvas_height, float viewport_size) {
+    vec2_t result;
+    result.x = (int)(p.x * canvas_width / viewport_size);
+    result.y = (int)(p.y * canvas_height / viewport_size);
+    return result;
+}
+
+// 实现三维顶点投影到二维画布
+vec2_t project_vertex(vec3_t v, int canvas_width, int canvas_height, float viewport_size, float projection_plane_z) {
+    vec2_t projected;
+    projected.x = v.x * projection_plane_z / v.z;
+    projected.y = v.y * projection_plane_z / v.z;
+    return view_port_to_canvas(projected, canvas_width, canvas_height, viewport_size);
+}

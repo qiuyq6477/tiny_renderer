@@ -21,6 +21,12 @@ void draw_shaded_triangle(
     uint32_t color
 );
 
+// 实现视口到画布的坐标变换
+vec2_t view_port_to_canvas(vec2_t p, int canvas_width, int canvas_height, float viewport_size);
+
+// 实现三维顶点投影到二维画布
+vec2_t project_vertex(vec3_t v, int canvas_width, int canvas_height, float viewport_size, float projection_plane_z);
+
 // 优化后的interpolate函数声明
 void interpolate(int i0, int d0, int i1, int d1, int* out, int* out_len);
 

@@ -66,6 +66,95 @@ void raytracer_test()
     }
 }
 
+void draw_cube()
+{
+    // 定义立方体的8个顶点
+    vec3_t vA = { -2, -0.5, 5 };
+    vec3_t vB = { -2,  0.5, 5 };
+    vec3_t vC = { -1,  0.5, 5 };
+    vec3_t vD = { -1, -0.5, 5 };
+
+    vec3_t vAb = { -2, -0.5, 6 };
+    vec3_t vBb = { -2,  0.5, 6 };
+    vec3_t vCb = { -1,  0.5, 6 };
+    vec3_t vDb = { -1, -0.5, 6 };
+
+    // 定义颜色
+    uint32_t RED   = 0xFFFF0000;
+    uint32_t GREEN = 0xFF00FF00;
+    uint32_t BLUE  = 0xFF0000FF;
+
+    // 投影参数
+    float viewport_size = 1.0f;
+    float projection_plane_z = 1.0f;
+
+    // 绘制前方正方形
+    draw_line(
+        project_vertex(vA, window_width, window_height, viewport_size, projection_plane_z),
+        project_vertex(vB, window_width, window_height, viewport_size, projection_plane_z),
+        BLUE
+    );
+    draw_line(
+        project_vertex(vB, window_width, window_height, viewport_size, projection_plane_z),
+        project_vertex(vC, window_width, window_height, viewport_size, projection_plane_z),
+        BLUE
+    );
+    draw_line(
+        project_vertex(vC, window_width, window_height, viewport_size, projection_plane_z),
+        project_vertex(vD, window_width, window_height, viewport_size, projection_plane_z),
+        BLUE
+    );
+    draw_line(
+        project_vertex(vD, window_width, window_height, viewport_size, projection_plane_z),
+        project_vertex(vA, window_width, window_height, viewport_size, projection_plane_z),
+        BLUE
+    );
+
+    // 绘制后方正方形
+    draw_line(
+        project_vertex(vAb, window_width, window_height, viewport_size, projection_plane_z),
+        project_vertex(vBb, window_width, window_height, viewport_size, projection_plane_z),
+        RED
+    );
+    draw_line(
+        project_vertex(vBb, window_width, window_height, viewport_size, projection_plane_z),
+        project_vertex(vCb, window_width, window_height, viewport_size, projection_plane_z),
+        RED
+    );
+    draw_line(
+        project_vertex(vCb, window_width, window_height, viewport_size, projection_plane_z),
+        project_vertex(vDb, window_width, window_height, viewport_size, projection_plane_z),
+        RED
+    );
+    draw_line(
+        project_vertex(vDb, window_width, window_height, viewport_size, projection_plane_z),
+        project_vertex(vAb, window_width, window_height, viewport_size, projection_plane_z),
+        RED
+    );
+
+    // 绘制连接前后方的线
+    draw_line(
+        project_vertex(vA, window_width, window_height, viewport_size, projection_plane_z),
+        project_vertex(vAb, window_width, window_height, viewport_size, projection_plane_z),
+        GREEN
+    );
+    draw_line(
+        project_vertex(vB, window_width, window_height, viewport_size, projection_plane_z),
+        project_vertex(vBb, window_width, window_height, viewport_size, projection_plane_z),
+        GREEN
+    );
+    draw_line(
+        project_vertex(vC, window_width, window_height, viewport_size, projection_plane_z),
+        project_vertex(vCb, window_width, window_height, viewport_size, projection_plane_z),
+        GREEN
+    );
+    draw_line(
+        project_vertex(vD, window_width, window_height, viewport_size, projection_plane_z),
+        project_vertex(vDb, window_width, window_height, viewport_size, projection_plane_z),
+        GREEN
+    );
+}
+
 void raster_test()
 {
     // draw_line((vec2_t){-200, -100}, (vec2_t){240, 120}, 0xFFFFFFFF);
@@ -77,7 +166,8 @@ void raster_test()
 
     draw_wireframe_triangle(p0, p1, p2, 0xFF000000);
     // draw_filled_triangle(p0, p1, p2, 0xFFFF0000);
-    draw_shaded_triangle(p0, 0.3, p1, 0.1, p2, 1, 0xFF00FF00);
+    // draw_shaded_triangle(p0, 0.3, p1, 0.1, p2, 1, 0xFF00FF00);
+    draw_cube();
 }
 
 void render(void) {
