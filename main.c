@@ -76,7 +76,8 @@ void raster_test()
     vec2_t p2 = (vec2_t){20, 250};
 
     draw_wireframe_triangle(p0, p1, p2, 0xFF000000);
-    draw_filled_triangle(p0, p1, p2, 0xFFFF0000);
+    // draw_filled_triangle(p0, p1, p2, 0xFFFF0000);
+    draw_shaded_triangle(p0, 0.3, p1, 0.1, p2, 1, 0xFF00FF00);
 }
 
 void render(void) {
