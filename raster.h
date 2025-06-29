@@ -2,6 +2,7 @@
 #define RASTER_H
 
 #include "vector.h"
+#include "geometry.h"
 #include <stdint.h>
 
 // 画线函数，color为ARGB格式
@@ -29,5 +30,8 @@ vec2_t project_vertex(vec3_t v, int canvas_width, int canvas_height, float viewp
 
 // 优化后的interpolate函数声明
 void interpolate(int i0, int d0, int i1, int d1, int* out, int* out_len);
+
+
+void render_scene(const camera_t camera, const instance_t* instances, int instance_count);
 
 #endif // RASTER_H 

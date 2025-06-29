@@ -5,6 +5,13 @@
 #include <stdbool.h>
 #include <SDL2/SDL.h>
 
+#define COLOR_RED    0xFFFF0000
+#define COLOR_GREEN  0xFF00FF00
+#define COLOR_BLUE   0xFF0000FF
+#define COLOR_YELLOW 0xFFFFFF00
+#define COLOR_PURPLE 0xFFFF00FF
+#define COLOR_CYAN   0xFF00FFFF
+
 extern SDL_Window* window;
 extern SDL_Renderer* renderer;
 extern uint32_t* color_buffer;

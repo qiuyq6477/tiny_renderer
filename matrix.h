@@ -23,13 +23,13 @@ void matrix_set(matrix_t* mat, size_t i, size_t j, float value);
 // 单位矩阵
 matrix_t matrix_identity(size_t n);
 // 矩阵加法
-matrix_t matrix_add(const matrix_t* a, const matrix_t* b);
+matrix_t matrix_add(matrix_t a, matrix_t b);
 // 矩阵乘法
-matrix_t matrix_mul(const matrix_t* a, const matrix_t* b);
+matrix_t matrix_mul(matrix_t a, matrix_t b);
 // 矩阵转置
-matrix_t matrix_transpose(const matrix_t* mat);
+matrix_t matrix_transpose(matrix_t mat);
 // 判断两个矩阵是否相等
-bool matrix_equal(const matrix_t* a, const matrix_t* b, float eps);
+bool matrix_equal(matrix_t a, matrix_t b, float eps);
 // 全零矩阵
 matrix_t matrix_zeros(size_t rows, size_t cols);
 // 全一矩阵
@@ -41,6 +41,20 @@ matrix_t matrix_from_array(const float* arr, size_t rows, size_t cols);
 // 支持C99风格二维数组初始化（如 float arr[2][3]）
 matrix_t matrix_from_2darray(size_t rows, size_t cols, const float arr[rows][cols]);
 // 3x3矩阵与vec3_t相乘
-vec3_t matrix_mul_vec3(const matrix_t* mat, vec3_t v);
+vec3_t matrix_mul_vec3(matrix_t mat, vec3_t v);
+
+// 构造绕Y轴旋转的4x4矩阵（角度制）
+matrix_t matrix_make_oy_rotation(float degrees);
+
+// 构造平移变换的4x4矩阵
+matrix_t matrix_make_translation(vec3_t translation);
+
+// 构造缩放变换的4x4矩阵
+matrix_t matrix_make_scaling(float scale);
+
+// 4x4矩阵与vec4_t相乘
+vec4_t matrix_mul_vec4(matrix_t mat, vec4_t v);
+
+
 
 #endif // MATRIX_H 

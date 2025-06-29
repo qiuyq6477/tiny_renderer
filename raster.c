@@ -1,7 +1,9 @@
-#include "raster.h"
-#include "display.h"
 #include <stdlib.h>
 #include <math.h>
+#include "raster.h"
+#include "display.h"
+#include "geometry.h"
+#include "matrix.h"
 
 // 辅助插值函数
 void interpolate(int i0, int d0, int i1, int d1, int* out, int* out_len) {
@@ -215,4 +217,151 @@ vec2_t project_vertex(vec3_t v, int canvas_width, int canvas_height, float viewp
     projected.x = v.x * projection_plane_z / v.z;
     projected.y = v.y * projection_plane_z / v.z;
     return view_port_to_canvas(projected, canvas_width, canvas_height, viewport_size);
+}
+
+// 裁剪三角形，输出到triangles_out，返回新三角形数量
+static int clip_triangle(
+    triangle_t tri,
+    plane_t plane,
+    vec3_t* vertexes,
+    triangle_t* triangles_out,
+    vec3_t* new_vertexes,
+    int* new_vertex_count,
+    int max_vertex
+) {
+    int idx[3] = {tri.v0, tri.v1, tri.v2};
+    float d[3];
+    int in_idx[3], out_idx[3], in_count = 0, out_count = 0;
+    for (int i = 0; i < 3; i++) {
+        d[i] = vec3_dot(plane.normal, vertexes[idx[i]]) + plane.distance;
+        if (d[i] > 0) in_idx[in_count++] = i;
+        else out_idx[out_count++] = i;
+    }
+    if (in_count == 0) return 0;
+    if (in_count == 3) {
+        triangles_out[0] = tri;
+        return 1;
+    }
+    if (in_count == 1 && out_count == 2) {
+        int i0 = in_idx[0], i1 = out_idx[0], i2 = out_idx[1];
+        int v0 = idx[i0], v1 = idx[i1], v2 = idx[i2];
+        float t1 = d[i0] / (d[i0] - d[i1]);
+        float t2 = d[i0] / (d[i0] - d[i2]);
+        if (*new_vertex_count + 2 >= max_vertex) return 0; // 防止越界
+        vec3_t p1 = vec3_add(vertexes[v0], vec3_scale(vec3_sub(vertexes[v1], vertexes[v0]), t1));
+        vec3_t p2 = vec3_add(vertexes[v0], vec3_scale(vec3_sub(vertexes[v2], vertexes[v0]), t2));
+        int p1_idx = (*new_vertex_count)++;
+        int p2_idx = (*new_vertex_count)++;
+        new_vertexes[p1_idx] = p1;
+        new_vertexes[p2_idx] = p2;
+        triangles_out[0] = (triangle_t){v0, p1_idx, p2_idx, tri.color};
+        return 1;
+    }
+    if (in_count == 2 && out_count == 1) {
+        int i0 = in_idx[0], i1 = in_idx[1], i2 = out_idx[0];
+        int v0 = idx[i0], v1 = idx[i1], v2 = idx[i2];
+        float t0 = d[i0] / (d[i0] - d[i2]);
+        float t1 = d[i1] / (d[i1] - d[i2]);
+        if (*new_vertex_count + 2 >= max_vertex) return 0; // 防止越界
+        vec3_t p0 = vec3_add(vertexes[v0], vec3_scale(vec3_sub(vertexes[v2], vertexes[v0]), t0));
+        vec3_t p1 = vec3_add(vertexes[v1], vec3_scale(vec3_sub(vertexes[v2], vertexes[v1]), t1));
+        int p0_idx = (*new_vertex_count)++;
+        int p1_idx = (*new_vertex_count)++;
+        new_vertexes[p0_idx] = p0;
+        new_vertexes[p1_idx] = p1;
+        triangles_out[0] = (triangle_t){v0, v1, p0_idx, tri.color};
+        triangles_out[1] = (triangle_t){v1, p1_idx, p0_idx, tri.color};
+        return 2;
+    }
+    return 0;
+}
+
+// 变换和裁剪模型
+model_t* transform_and_clip(
+    plane_t* planes, int plane_count,
+    model_t* model, matrix_t* transform
+) {
+    // 1. 变换所有顶点
+    int max_vertex = model->vertex_count + model->triangle_count * 256; // 放大，防止越界
+    vec3_t* vertexes = malloc(sizeof(vec3_t) * max_vertex);
+    for (int i = 0; i < model->vertex_count; i++) {
+        // 只取前三维
+        vec4_t v4 = {model->vertexes[i].x, model->vertexes[i].y, model->vertexes[i].z, 1.0f};
+        vec4_t tv = matrix_mul_vec4(*transform, v4);
+        vertexes[i] = (vec3_t){tv.x, tv.y, tv.z};
+    }
+    int vertex_count = model->vertex_count;
+
+    // 2. 裁剪三角形
+    int max_tri = model->triangle_count * 32; // 放大
+    triangle_t* triangles = malloc(sizeof(triangle_t) * max_tri);
+    memcpy(triangles, model->triangles, sizeof(triangle_t) * model->triangle_count);
+    int triangle_count = model->triangle_count;
+
+    for (int p = 0; p < plane_count; p++) {
+        triangle_t* new_tris = malloc(sizeof(triangle_t) * max_tri);
+        int new_count = 0;
+        for (int t = 0; t < triangle_count; t++) {
+            new_count += clip_triangle(triangles[t], planes[p], vertexes, &new_tris[new_count], vertexes, &vertex_count, max_vertex);
+        }
+        free(triangles);
+        triangles = new_tris;
+        triangle_count = new_count;
+    }
+
+    model_t* result = malloc(sizeof(model_t));
+    result->vertexes = vertexes;
+    result->vertex_count = vertex_count;
+    result->triangles = triangles;
+    result->triangle_count = triangle_count;
+    result->bounds_center = model->bounds_center;
+    result->bounds_radius = model->bounds_radius;
+    return result;
+}
+
+// 投影并绘制三角形
+void render_model(const model_t* model) {
+    float viewport_size = 1.0f;
+    float projection_plane_z = 1.0f;
+    for (int i = 0; i < model->triangle_count; i++) {
+        triangle_t tri = model->triangles[i];
+        vec3_t v0 = model->vertexes[tri.v0];
+        vec3_t v1 = model->vertexes[tri.v1];
+        vec3_t v2 = model->vertexes[tri.v2];
+        vec2_t p0 = project_vertex(v0, window_width, window_height, viewport_size, projection_plane_z);
+        vec2_t p1 = project_vertex(v1, window_width, window_height, viewport_size, projection_plane_z);
+        vec2_t p2 = project_vertex(v2, window_width, window_height, viewport_size, projection_plane_z);
+        draw_wireframe_triangle(p0, p1, p2, tri.color);
+    }
+}
+
+void render_scene(const camera_t camera, const instance_t *instances, int instance_count) {
+    // 1. 计算相机变换矩阵
+    matrix_t camera_matrix = matrix_mul(
+        matrix_transpose(camera.orientation),
+        matrix_make_translation(vec3_neg(camera.position))
+    );
+
+    for (int i = 0; i < instance_count; i++) {
+        // 2. 计算模型变换矩阵
+        matrix_t model_matrix = matrix_mul(
+            matrix_make_translation(instances[i].position),
+            matrix_mul(instances[i].orientation, matrix_make_scaling(instances[i].scale))
+        );
+        matrix_t transform = matrix_mul(camera_matrix, model_matrix);
+
+        // 3. 变换并裁剪
+        model_t* clipped = transform_and_clip(
+            camera.clipping_planes, camera.clipping_plane_count,
+            instances[i].model, &transform
+        );
+        if (clipped) {
+            // 4. 投影并光栅化
+            render_model(clipped);
+            // 释放clipped分配的内存
+            free(clipped->vertexes);
+            free(clipped->triangles);
+            free(clipped);
+        }
+    }
 }

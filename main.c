@@ -6,6 +6,7 @@
 #include "raytracer.h"
 #include "matrix.h"
 #include "raster.h"
+#include "geometry.h"
 
 bool is_running = false;
 
@@ -52,7 +53,7 @@ void raytracer_test()
         for (int y = -window_height/2; y < window_height/2; y++) {
             vec3_t direction = canvas_to_viewport(x, y);
             direction = normalize(direction);
-            direction = matrix_mul_vec3(&camera_rotation, direction);
+            direction = matrix_mul_vec3(camera_rotation, direction);
 
             uint32_t color = trace_ray(camera_position, direction, 1, INFINITY, 3);
             
@@ -155,19 +156,96 @@ void draw_cube()
     );
 }
 
+
+void clipping_test()
+{
+    vec3_t cube_vertexes[] = {
+        {  1,  1,  1 },
+        { -1,  1,  1 },
+        { -1, -1,  1 },
+        {  1, -1,  1 },
+        {  1,  1, -1 },
+        { -1,  1, -1 },
+        { -1, -1, -1 },
+        {  1, -1, -1 }
+    };
+
+    triangle_t cube_triangles[] = {
+        {0, 1, 2, COLOR_RED},
+        {0, 2, 3, COLOR_RED},
+        {4, 0, 3, COLOR_GREEN},
+        {4, 3, 7, COLOR_GREEN},
+        {5, 4, 7, COLOR_BLUE},
+        {5, 7, 6, COLOR_BLUE},
+        {1, 5, 6, COLOR_YELLOW},
+        {1, 6, 2, COLOR_YELLOW},
+        {4, 5, 1, COLOR_PURPLE},
+        {4, 1, 0, COLOR_PURPLE},
+        {2, 6, 7, COLOR_CYAN},
+        {2, 7, 3, COLOR_CYAN}
+    };
+
+    model_t cube = {
+        .vertexes = cube_vertexes,
+        .vertex_count = 8,
+        .triangles = cube_triangles,
+        .triangle_count = 12,
+        .bounds_center = {0, 0, 0},
+        .bounds_radius = 1.73205f // sqrt(3)
+    };
+
+    instance_t instances[] = {
+        { 
+            .model = &cube, 
+            .position = { -1.5f, 0.0f, 7.0f }, 
+            .orientation = matrix_identity(4),
+            .scale = 0.75
+        },
+        { 
+            .model = &cube, 
+            .position = {  1.25f, 2.5f, 7.5f },
+            .orientation = matrix_make_oy_rotation(195),
+            .scale = 1
+        },
+
+    };
+
+    float s2 = 0.70710678f; // sqrt(2)/2
+    plane_t clipping_planes[] = {
+        { { 0, 0, 1 }, -1 },           // Near
+        { { s2, 0, s2 }, 0 },          // Left
+        { { -s2, 0, s2 }, 0 },         // Right
+        { { 0, -s2, s2 }, 0 },         // Top
+        { { 0, s2, s2 }, 0 }           // Bottom
+    };
+    int clipping_plane_count = 5;
+
+    camera_t camera = {
+        .position = { -3.0f, 1.0f, 2.0f },
+        .orientation = matrix_make_oy_rotation(-30),
+        .clipping_planes = clipping_planes,
+        .clipping_plane_count = 5,
+    };
+
+    render_scene(camera, instances, 2);
+}
+
+
+
 void raster_test()
 {
     // draw_line((vec2_t){-200, -100}, (vec2_t){240, 120}, 0xFFFFFFFF);
     // draw_line((vec2_t){-50, -200}, (vec2_t){60, 240}, 0xFFFFFFFF);
 
-    vec2_t p0 = (vec2_t){-200, -250};
-    vec2_t p1 = (vec2_t){200, 50};
-    vec2_t p2 = (vec2_t){20, 250};
+    // vec2_t p0 = (vec2_t){-200, -250};
+    // vec2_t p1 = (vec2_t){200, 50};
+    // vec2_t p2 = (vec2_t){20, 250};
 
-    draw_wireframe_triangle(p0, p1, p2, 0xFF000000);
+    // draw_wireframe_triangle(p0, p1, p2, 0xFFFF0000);
     // draw_filled_triangle(p0, p1, p2, 0xFFFF0000);
     // draw_shaded_triangle(p0, 0.3, p1, 0.1, p2, 1, 0xFF00FF00);
-    draw_cube();
+    // draw_cube();
+    clipping_test();
 }
 
 void render(void) {
