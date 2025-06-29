@@ -227,6 +227,7 @@ void clipping_test()
         .clipping_plane_count = 5,
     };
 
+    set_triangle_outline_enabled(true);
     render_scene(camera, instances, 2);
 }
 

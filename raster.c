@@ -320,7 +320,7 @@ model_t* transform_and_clip(
 }
 
 // 投影并绘制三角形
-void render_model(const model_t* model) {
+void render_wireframe_model(const model_t* model) {
     float viewport_size = 1.0f;
     float projection_plane_z = 1.0f;
     for (int i = 0; i < model->triangle_count; i++) {
@@ -334,6 +334,139 @@ void render_model(const model_t* model) {
         draw_wireframe_triangle(p0, p1, p2, tri.color);
     }
 }
+
+#pragma region 深度测试和背面剔除
+
+// 计算三角形法线
+static vec3_t compute_triangle_normal(vec3_t v0, vec3_t v1, vec3_t v2) {
+    vec3_t v0v1 = vec3_sub(v1, v0);
+    vec3_t v0v2 = vec3_sub(v2, v0);
+    return vec3_cross(v0v1, v0v2);
+}
+
+
+// 判断三角形是否为背面（视点在原点）
+static bool is_backface(vec3_t v0, vec3_t v1, vec3_t v2) {
+    vec3_t normal = compute_triangle_normal(v0, v1, v2);
+    // 取三角形中心到原点的向量
+    vec3_t center = vec3_scale(vec3_add(vec3_add(v0, v1), v2), -1.0f/3.0f);
+    // 视点在原点，normal和center点积<0为背面
+    return vec3_dot(center, normal) < 0;
+}
+
+// 深度缓冲区
+static float* depth_buffer = NULL;
+static int depth_buffer_w = 0, depth_buffer_h = 0;
+
+void clear_depth_buffer(int w, int h) {
+    if (!depth_buffer || depth_buffer_w != w || depth_buffer_h != h) {
+        if (depth_buffer) free(depth_buffer);
+        depth_buffer = malloc(sizeof(float) * w * h);
+        depth_buffer_w = w;
+        depth_buffer_h = h;
+    }
+    for (int i = 0; i < w * h; ++i) depth_buffer[i] = -INFINITY;
+}
+
+static bool update_depth_buffer_if_closer(int x, int y, float inv_z) {
+    x = window_width/2 + x;
+    y = window_height/2 - y;
+    if (x < 0 || x >= window_width || y < 0 || y >= window_height) return false;
+    int offset = x + window_width * y;
+    if (depth_buffer[offset] < inv_z) {
+        depth_buffer[offset] = inv_z;
+        return true;
+    }
+    return false;
+}
+
+// 控制开关
+static bool g_enable_depth_test = true;
+static bool g_enable_backface_cull = true;
+static bool g_enable_triangle_outline = false;
+
+void set_depth_test_enabled(bool enabled) { g_enable_depth_test = enabled; }
+void set_backface_cull_enabled(bool enabled) { g_enable_backface_cull = enabled; }
+void set_triangle_outline_enabled(bool enabled) { g_enable_triangle_outline = enabled; }
+
+// 填充三角形（带深度测试和背面剔除，可开关，支持描边）
+void render_filled_model(const model_t* model) {
+    float viewport_size = 1.0f;
+    float projection_plane_z = 1.0f;
+    if (g_enable_depth_test) {
+        clear_depth_buffer(window_width, window_height);
+    }
+    for (int i = 0; i < model->triangle_count; i++) {
+        triangle_t tri = model->triangles[i];
+        vec3_t v0 = model->vertexes[tri.v0];
+        vec3_t v1 = model->vertexes[tri.v1];
+        vec3_t v2 = model->vertexes[tri.v2];
+        if (g_enable_backface_cull && is_backface(v0, v1, v2)) continue;
+        // 投影
+        vec2_t p0 = project_vertex(v0, window_width, window_height, viewport_size, projection_plane_z);
+        vec2_t p1 = project_vertex(v1, window_width, window_height, viewport_size, projection_plane_z);
+        vec2_t p2 = project_vertex(v2, window_width, window_height, viewport_size, projection_plane_z);
+        // 按y排序
+        if (p1.y < p0.y) { vec2_t tp = p0; p0 = p1; p1 = tp; float tz = v0.z; v0.z = v1.z; v1.z = tz; }
+        if (p2.y < p0.y) { vec2_t tp = p0; p0 = p2; p2 = tp; float tz = v0.z; v0.z = v2.z; v2.z = tz; }
+        if (p2.y < p1.y) { vec2_t tp = p1; p1 = p2; p2 = tp; float tz = v1.z; v1.z = v2.z; v2.z = tz; }
+        // 计算三条边的x坐标和1/z插值
+        int x01_len, x12_len, x02_len;
+        int x01[2048], x12[2048], x02[2048];
+        interpolate(p0.y, p0.x, p1.y, p1.x, x01, &x01_len);
+        interpolate(p1.y, p1.x, p2.y, p2.x, x12, &x12_len);
+        interpolate(p0.y, p0.x, p2.y, p2.x, x02, &x02_len);
+        // 1/z插值
+        float iz0 = 1.0f/v0.z, iz1 = 1.0f/v1.z, iz2 = 1.0f/v2.z;
+        int iz01_len, iz12_len, iz02_len;
+        float iz01[2048], iz12[2048], iz02[2048];
+        interpolate_float(p0.y, iz0, p1.y, iz1, iz01, &iz01_len);
+        interpolate_float(p1.y, iz1, p2.y, iz2, iz12, &iz12_len);
+        interpolate_float(p0.y, iz0, p2.y, iz2, iz02, &iz02_len);
+        // 合并两条短边
+        int x012[4096], x012_len = 0;
+        float iz012[4096]; int iz012_len = 0;
+        for (int i = 0; i < x01_len - 1; i++) { x012[x012_len++] = x01[i]; iz012[iz012_len++] = iz01[i]; }
+        for (int i = 0; i < x12_len; i++) { x012[x012_len++] = x12[i]; iz012[iz012_len++] = iz12[i]; }
+        // 确定哪边是左边，哪边是右边
+        int* x_left; int* x_right; float* iz_left; float* iz_right;
+        int m = x02_len / 2;
+        if (x02[m] < x012[m]) { x_left = x02; iz_left = iz02; x_right = x012; iz_right = iz012; }
+        else { x_left = x012; iz_left = iz012; x_right = x02; iz_right = iz02; }
+        // 绘制水平线段
+        for (int y = p0.y; y <= p2.y; y++) {
+            int idx = y - p0.y;
+            if (idx < x02_len && idx < x012_len) {
+                int xl = x_left[idx];
+                int xr = x_right[idx];
+                float izl = iz_left[idx];
+                float izr = iz_right[idx];
+                int seg_len = xr - xl + 1;
+                if (seg_len <= 0) continue;
+                float izstep = (izr - izl) / (float)(xr - xl == 0 ? 1 : xr - xl);
+                float izval = izl;
+                for (int x = xl; x <= xr; x++) {
+                    bool pass_depth = true;
+                    if (g_enable_depth_test) {
+                        pass_depth = update_depth_buffer_if_closer(x, y, izval);
+                    }
+                    if (pass_depth) {
+                        draw_pixel(x, y, tri.color);
+                    }
+                    izval += izstep;
+                }
+            }
+        }
+        // 三角形描边
+        if (g_enable_triangle_outline) {
+            // 取较暗色
+            uint32_t outline_color = (tri.color & 0xFF000000) | (((((tri.color>>16)&0xFF)*3/4)<<16) | ((((tri.color>>8)&0xFF)*3/4)<<8) | (((tri.color)&0xFF)*3/4));
+            draw_wireframe_triangle(p0, p1, p2, outline_color);
+        }
+    }
+}
+
+#pragma endregion
 
 void render_scene(const camera_t camera, const instance_t *instances, int instance_count) {
     // 1. 计算相机变换矩阵
@@ -357,7 +490,7 @@ void render_scene(const camera_t camera, const instance_t *instances, int instan
         );
         if (clipped) {
             // 4. 投影并光栅化
-            render_model(clipped);
+            render_filled_model(clipped);
             // 释放clipped分配的内存
             free(clipped->vertexes);
             free(clipped->triangles);

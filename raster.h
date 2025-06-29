@@ -32,6 +32,10 @@ vec2_t project_vertex(vec3_t v, int canvas_width, int canvas_height, float viewp
 void interpolate(int i0, int d0, int i1, int d1, int* out, int* out_len);
 
 
+void set_depth_test_enabled(bool enabled);
+void set_backface_cull_enabled(bool enabled);
+void set_triangle_outline_enabled(bool enabled);
+
 void render_scene(const camera_t camera, const instance_t* instances, int instance_count);
 
 #endif // RASTER_H 
